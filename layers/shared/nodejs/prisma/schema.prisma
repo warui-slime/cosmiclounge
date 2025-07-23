@@ -1,0 +1,346 @@
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+  
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum CommunityRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum CommunityType {
+  CINEMA
+  MUSIC
+  SPORTS
+}
+
+enum RoomType {
+  AUDIO
+  VIDEO
+  LIVESTREAM
+}
+
+enum EventType {
+  WATCH_PARTY
+  CONCERT
+  TRIVIA
+  WORKSHOP
+}
+
+enum MediaType {
+  VIDEO
+  AUDIO
+  IMAGE
+  FILE
+}
+
+enum ReportContentType {
+  MESSAGE
+  MEDIA
+  EVENT
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+  PRO
+}
+
+enum VirtualGoodType {
+  AVATAR
+  BADGE
+  THEME
+  EMOTE
+}
+
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  AUDIO
+}
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  email        String     @unique
+  cognitoSub   String     @unique
+  avatarUrl    String?
+  bio          String?
+  role         Role       @default(USER)
+  createdAt    DateTime   @default(now())
+  lastLogin    DateTime?
+  isVerified   Boolean    @default(false)
+  preferences  Json?
+  reactions    Reaction[]
+
+  // Relationships
+  communities        CommunityMember[]
+  rooms              RoomParticipant[]
+  messages           Message[]
+  media              Media[]
+  llmInteractions    LLMInteraction[]
+  reports            Report[]          @relation("ReporterRelation")
+  reported           Report[]          @relation("ReportedUserRelation")
+  subscriptions      Subscription[]
+  inventory          UserInventory[]
+  achievements       UserAchievement[]
+  createdEvents      Event[]           @relation("Creator") // Events created by this user
+  accessibleEvents   Event[]           @relation("UserEvents") // Private events the user has access to
+  createdCommunities Community[]       @relation("UserCreatedCommunities")
+}
+
+model Community {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  type        CommunityType
+  bannerUrl   String?
+  rules       String?
+  joinCode    String        @unique
+  createdById String
+  createdBy   User          @relation("UserCreatedCommunities", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+
+  // Relationships
+  members CommunityMember[]
+  rooms   Room[]
+  events  Event[]
+}
+
+model CommunityMember {
+  userId      String        @map("user_id")
+  communityId String        @map("community_id")
+  joinedAt    DateTime      @default(now()) @map("joined_at")
+  role        CommunityRole @default(MEMBER)
+
+  // Relationships
+  user      User      @relation(fields: [userId], references: [id])
+  community Community @relation(fields: [communityId], references: [id],onDelete: Cascade)
+
+  @@id([userId, communityId])
+  @@map("community_members")
+}
+
+model Room {
+  id              String    @id @default(cuid())
+  communityId     String    @map("community_id")
+  name            String
+  type            RoomType
+  maxParticipants Int       @default(50) @map("max_participants")
+  isPrivate       Boolean   @default(false) @map("is_private")
+  createdBy       String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  endedAt         DateTime? @map("ended_at")
+  pinnedMessage   String?   @map("pinned_message_id")
+
+  // Relationships
+  community    Community         @relation(fields: [communityId], references: [id])
+  participants RoomParticipant[]
+  messages     Message[]
+}
+
+model RoomParticipant {
+  roomId            String    @map("room_id")
+  userId            String    @map("user_id")
+  joinedAt          DateTime  @default(now()) @map("joined_at")
+  leftAt            DateTime? @map("left_at")
+  lastReadMessageId String?   @map("last_read_message_id")
+
+  // Relationships
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([roomId, userId])
+  @@map("room_participants")
+}
+
+model Message {
+  id                String      @id @default(cuid())
+  roomId            String      @map("room_id")
+  userId            String      @map("user_id")
+  content           String
+  translatedContent Json?       @map("translated_content")
+  isFlagged         Boolean     @default(false) @map("is_flagged")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  type              MessageType @default(TEXT) // TEXT, IMAGE, VIDEO, etc.
+  media             Media?      @relation(fields: [mediaId], references: [id])
+  mediaId           String?     @map("media_id")
+
+  // Relationships
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  reactions Reaction[]
+}
+
+model Reaction {
+  id        String @id @default(cuid())
+  messageId String @map("message_id")
+  userId    String @map("user_id")
+  emoji     String
+
+  // Relationships
+  message Message @relation(fields: [messageId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji]) // Prevent duplicates
+  @@map("reactions")
+}
+
+model Event {
+  id          String          @id @default(cuid())
+  communityId String          @map("community_id")
+  title       String
+  description String?
+  type        EventType
+  startTime   DateTime        @map("start_time")
+  endTime     DateTime?       @map("end_time")
+  mediaUrl    String?         @map("media_url")
+  status      String          @default("scheduled")
+  visibility  EventVisibility @default(PUBLIC)
+
+  // Relationships
+  community Community @relation(fields: [communityId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("Creator", fields: [createdById], references: [id])
+
+  allowedUsers User[] @relation("UserEvents") // Users allowed for private events
+}
+
+model Media {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  title        String
+  description  String?
+  type         MediaType
+  url          String
+  duration     Int?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  isPublic     Boolean   @default(true) @map("is_public")
+  fileSize     Int?      @map("file_size") // In bytes
+  mimeType     String?   @map("mime_type") // e.g. "image/png"
+  firebasePath String    @map("firebase_path")
+  thumbnailUrl String?   @map("thumbnail_url") // For video/image previews
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id])
+
+  Message Message[]
+}
+
+model LLMInteraction {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  prompt    String
+  response  String
+  context   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Report {
+  id                String            @id @default(cuid())
+  reporterId        String            @map("reporter_id")
+  reportedUserId    String            @map("reported_user_id")
+  reportedContentId String?           @map("reported_content_id")
+  contentType       ReportContentType @map("content_type")
+  reason            String
+  status            ReportStatus      @default(PENDING)
+  createdAt         DateTime          @default(now()) @map("created_at")
+
+  // Relationships
+  reporter     User @relation("ReporterRelation", fields: [reporterId], references: [id])
+  reportedUser User @relation("ReportedUserRelation", fields: [reportedUserId], references: [id])
+}
+
+model Subscription {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  plan      SubscriptionPlan
+  startDate DateTime         @default(now()) @map("start_date")
+  endDate   DateTime?        @map("end_date")
+  isActive  Boolean          @default(true) @map("is_active")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id])
+}
+
+model VirtualGood {
+  id               String          @id @default(cuid())
+  name             String
+  type             VirtualGoodType
+  price            Float
+  imageUrl         String          @map("image_url")
+  isLimitedEdition Boolean         @default(false) @map("is_limited_edition")
+
+  // Relationships
+  inventory UserInventory[]
+}
+
+model UserInventory {
+  userId        String   @map("user_id")
+  virtualGoodId String   @map("virtual_good_id")
+  purchasedAt   DateTime @default(now()) @map("purchased_at")
+
+  // Relationships
+  user        User        @relation(fields: [userId], references: [id])
+  virtualGood VirtualGood @relation(fields: [virtualGoodId], references: [id])
+
+  @@id([userId, virtualGoodId])
+  @@map("user_inventory")
+}
+
+model Achievement {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  criteria    Json
+
+  // Relationships
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+
+  // Relationships
+  user        User        @relation(fields: [userId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@id([userId, achievementId])
+  @@map("user_achievements")
+}

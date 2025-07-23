@@ -1,0 +1,33 @@
+{
+  "name": "cosmiclounge",
+  "version": "1.0.0",
+  "description": "CosmicLounge - Serverless API with Lambda functions",
+  "scripts": {
+    "dev": "serverless offline",
+    "build": "serverless package",
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "migrate": "serverless invoke -f migrate",
+    "migrate:prod": "serverless invoke -f migrate --stage prod",
+    "logs": "serverless logs -f",
+    "remove": "serverless remove",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["serverless", "lambda", "fastify", "prisma", "aws"],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "src/functions/*",
+    "layers/shared/nodejs"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "esbuild": "^0.25.6",
+    "prisma": "^6.11.1",
+    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-esbuild": "^1.55.1",
+    "typescript": "^5.8.3"
+  }
+}

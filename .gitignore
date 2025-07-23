@@ -1,0 +1,7 @@
+node_modules
+.serverless
+serverless.yml
+layers/shared/nodejs/node_modules
+.env
+dist
+STRUCTURE.md
