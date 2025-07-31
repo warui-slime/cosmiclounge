@@ -1,5 +1,4 @@
-// TODO: Copy your Prisma client configuration from src/utils/prisma.ts
-// This file should contain the Prisma client instance and connection management
+
 
 import { PrismaClient,User } from '@prisma/client';
 

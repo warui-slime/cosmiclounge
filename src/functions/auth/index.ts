@@ -1,153 +1,56 @@
-import { FastifyInstance } from "fastify";
-import {
-  authResponseSchema,
-  errorResponseSchema,
-  loginSchema,
-  signupSchema,
-  TUserLogin,
-  TUserSignup,
-  userResponseSchema,
-} from "cosmic/src/validators/auth.validator.js";
-import { AuthService } from "./service.js";
-import jwt from "jsonwebtoken";
-import { AuthError } from "cosmic/src/errors/appError.js";
+import { buildServer } from "@shared/src/index.js";
+import userAuth from "./auth.routes.js";
+import { FastifyInstance, awsLambdaFastify } from "@shared/src/utils/export.js";
+import type { APIGatewayProxyEvent, Context, APIGatewayProxyResult } from "aws-lambda";
 
-const authService = new AuthService();
+const serverReady = buildServer(async (server: FastifyInstance) =>
+  server.register(userAuth, { prefix: "/api" })
+);
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-const isProduction = process.env.NODE_ENV === "production";
+// const lambdaProxy = awsLambdaFastify(await serverReady);
 
-async function userAuth(fastify: FastifyInstance) {
-  fastify.post<{ Body: TUserSignup }>(
-    "/signup",
-    {
-      schema: {
-        body: signupSchema,
-        response: {
-          201: userResponseSchema,
-          400: errorResponseSchema,
-          409: errorResponseSchema, // Conflict (duplicate)
-          500: errorResponseSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      try {
-        const user = await authService.signup(request.body);
+// export const handler = async (event:APIGatewayProxyEvent, context:Context) => {
+//   return lambdaProxy(event, context);
+// };
 
-        // Convert Date to string for Zod validation
-        const responseUser = {
-          ...user,
-          createdAt: user.createdAt.toISOString(),
-        };
+// let lambdaProxy: ReturnType<typeof awsLambdaFastify> | null = null;
 
-        return reply.code(201).send(responseUser);
-      } catch (error) {
-        // Centralized error handler will process this
-        throw error;
+// export const handler = async (
+//   event: APIGatewayProxyEvent,
+//   context: Context
+// ) => {
+//   // initialize Fastify server and only-await inside handler
+//   const server = await buildServer(async (server) => {
+//     server.register(userAuth, { prefix: "/api" });
+//   });
+//   const lambdaProxy = awsLambdaFastify(server);
+
+//   return lambdaProxy(event, context);
+// };
+
+let lambdaProxy: ReturnType<typeof awsLambdaFastify> | null = null;
+
+export const handler = async (
+  event: APIGatewayProxyEvent,
+  context: Context
+): Promise<APIGatewayProxyResult> => {
+  if (!lambdaProxy) {
+    // First cold start: build & cache
+    const server = await buildServer(async (server:FastifyInstance) => {
+      server.register(userAuth, { prefix: '/auth' });
+    });
+    lambdaProxy = awsLambdaFastify(server);
+  }
+
+  // Wrap the callback-style proxy in a Promise for async/await
+  return new Promise((resolve, reject) => {
+    lambdaProxy!(
+      event,
+      context,
+      (err?: Error | null, result?: APIGatewayProxyResult) => {
+        if (err) reject(err);
+        else resolve(result!);
       }
-    }
-  );
-
-  fastify.post<{ Body: TUserLogin }>(
-    "/login",
-    {
-      schema: {
-        body: loginSchema,
-        response: {
-          200: authResponseSchema,
-          400: errorResponseSchema,
-          401: errorResponseSchema,
-          500: errorResponseSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-
-      try {
-        const result = await authService.login(request.body);
-
-        // Convert Date to string
-        // const responseUser = {
-        //   ...result.user,
-        //   createdAt: result.user.createdAt.toISOString(),
-        //   lastLogin: result.user.lastLogin?.toISOString(), // Optional
-        // };
-        // 1) Create access token (short‑lived)
-        // const accessToken = jwt.sign(
-        //   { userId: responseUser.id, type: "access" },
-        //   JWT_SECRET,
-        //   { expiresIn: "15m" }
-        // );
-
-        // // 2) Create refresh token (longer‑lived)
-        // const refreshToken = jwt.sign(
-        //   { userId: responseUser.id, type: "refresh" },
-        //   JWT_SECRET,
-        //   { expiresIn: "14d" }
-        // );
-
-        // 3) Send both as HttpOnly cookies
-
-        reply
-          .setCookie("accessToken", result.tokens!.AccessToken!, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? "strict" : "lax",
-            maxAge: result.tokens!.ExpiresIn!,
-            path: "/"
-          })
-          .setCookie("refreshToken", result.tokens!.RefreshToken!, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? "strict" : "lax",
-            maxAge: 14 * 24 * 60 * 60, // 14 days
-            path: "/"
-          })
-          .code(200)
-          .send({
-            user: {
-              ...result.user,
-              createdAt: result.user.createdAt.toISOString(),
-              lastLogin: result.user.lastLogin?.toISOString(),
-            }
-          });
-      } catch (error) {
-        throw error;
-      }
-    }
-  );
-
-  // fastify.post("/token/refresh", async (request, reply) => {
-  //   const token = request.cookies.refreshToken;
-
-  //   try {
-  //     if (!token) throw new AuthError("No token found");
-  //     const payload = jwt.verify(token, JWT_SECRET) as {
-  //       userId: string;
-  //       type: string;
-  //     };
-  //     if (payload.type !== "refresh")
-  //       throw new AuthError("Invalid refresh token");
-
-  //     const newAccess = jwt.sign(
-  //       { userId: payload.userId, type: "access" },
-  //       JWT_SECRET,
-  //       { expiresIn: "15m" }
-  //     );
-
-  //     reply
-  //       .setCookie("accessToken", newAccess, {
-  //         httpOnly: true,
-  //         secure: isProduction, // false in development
-  //         sameSite: isProduction ? "strict" : "lax",
-  //         maxAge: 15 * 60,
-  //         path:'/'
-  //       })
-  //       .send({ success: true });
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // });
-}
-export default userAuth;
+    );
+  });
+};

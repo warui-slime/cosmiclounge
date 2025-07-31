@@ -1,8 +1,8 @@
 // src/middleware/auth.middleware.ts
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { CognitoJwtVerifier } from 'aws-jwt-verify'
-import { prisma } from '../utils/prisma.js'
-import type { User } from '@prisma/client'
+// import { prisma } from '../utils/prisma.js'
+// import type { User } from '@prisma/client'
 
 
 const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID!
@@ -14,8 +14,7 @@ const verifier = CognitoJwtVerifier.create({
   clientId: COGNITO_CLIENT_ID,
 })
 
-// 1) Extend FastifyRequest so TS knows about request.user
-// Cognito ID token claims: https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-id-token.html
+
 
 declare module 'fastify' {
   interface FastifyRequest {

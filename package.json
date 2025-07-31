@@ -13,21 +13,20 @@
     "remove": "serverless remove",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["serverless", "lambda", "fastify", "prisma", "aws"],
+  "keywords": [
+    "serverless",
+    "lambda",
+    "fastify",
+    "prisma",
+    "aws"
+  ],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "private": true,
-  "workspaces": [
-    "src/functions/*",
-    "layers/shared/nodejs"
-  ],
   "devDependencies": {
-    "@types/node": "^24.0.3",
-    "esbuild": "^0.25.6",
-    "prisma": "^6.11.1",
+    "@types/node": "^24.1.0",
     "serverless-dotenv-plugin": "^6.0.0",
-    "serverless-esbuild": "^1.55.1",
     "typescript": "^5.8.3"
   }
 }
