@@ -1,4 +1,4 @@
-import { FastifyInstance } from "@shared/src/utils/export.js";
+import { FastifyInstance } from "fastify";
 import {
   authResponseSchema,
   errorResponseSchema,
@@ -7,8 +7,8 @@ import {
   TUserLogin,
   TUserSignup,
   userResponseSchema,
-} from "@shared/src/validators/auth.validator.js";
-import { AuthService } from "./auth.service.js";
+} from "../validators/auth.validator.js";
+import { AuthService } from "../services/auth.service.js";
 
 
 const authService = new AuthService();

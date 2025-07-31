@@ -1,0 +1,125 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: waruislime
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: cosmiclounge
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: cosmiclounge
+
+
+
+
+provider:
+  name: aws
+  region: us-east-2
+  stage: ${opt:stage, 'dev'}  # Kept from version1 for stage flexibility
+  runtime: nodejs22.x
+  # lambdaHashingVersion: 20201221
+  httpApi:
+    payload: '2.0'
+    cors: true
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    DIRECT_DATABASE_URL: ${env:DIRECT_DATABASE_URL}
+    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
+    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
+    COOKIE_SECRET: ${env:COOKIE_SECRET}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+  # iam:
+  #   role:
+  #     statements:
+  #       - Effect: Allow
+  #         Action:
+  #           - cognito-idp:AdminCreateUser
+  #           - cognito-idp:AdminUpdateUserAttributes
+  #           - cognito-idp:AdminInitiateAuth
+  #         Resource:
+  #           - arn:aws:cognito-idp:${self:provider.region}:*:userpool/*
+  #       - Effect: Allow
+  #         Action:
+  #           - rds-db:connect
+  #         Resource:
+  #           - arn:aws:rds:${self:provider.region}:*:db:*
+
+layers:
+  shared:
+    path: layers/shared
+    compatibleRuntimes:
+      - nodejs22.x
+    package:
+      patterns:
+        - nodejs/**
+
+package:
+  individually: true  # Better for Lambda performance
+  excludeDevDependencies: true
+  patterns:
+    - '!**/*.ts'        
+    - '!**/test/**'      
+    - '!**/*.map'        
+    - '!node_modules/**' 
+    # - 'dist/**'
+    - 'layers/shared/nodejs/**'
+
+functions:
+  auth:
+    handler: src/functions/auth/index.handler
+    layers:
+      - { Ref: SharedLambdaLayer }
+    events:
+      - httpApi:
+          path: /auth/{proxy+}
+          method: ANY
+
+
+  community:
+    handler: src/functions/community/index.handler
+    layers:
+      - { Ref: SharedLambdaLayer }
+    events:
+      - httpApi:
+          path: /community/{proxy+}
+          method: ANY
+
+  
+
+# custom:
+#   esbuild:
+#     bundle: true
+#     minify: true
+#     target: node22
+#     platform: node
+#     concurrency: 10
+#     sourcemap: true  # Kept from version1 for debugging
+#     define:
+#       'require.resolve': undefined
+#     external:  # Critical for Prisma in layers
+#       - '@prisma/client'
+#       - '.prisma/client'
+#       - '@prisma/engines'
+
+build:                       
+  esbuild:
+    bundle: true             
+    minify: true
+    target: node22
+    sourcemap:
+      type: linked
+      setNodeOptions: true
+    # external:
+    #   - '@aws-sdk/*'        # keep AWS SDK clients external so they live in your layer
+    #   - '@smithy/*'
+    # external:    
+    #   - '@prisma/client'
+    #   - '.prisma/client'
+    #   - '@prisma/engines'             
+    #   - '@aws-sdk/client-cognito-identity-provider'
+    #   - '@fastify/aws-lambda'
+    #   - '@fastify/cookie'
+    #   - '@fastify/cors'
+    #   - '@fastify/secure-session'
+     
+    #   - 'aws-jwt-verify'
+    #   - 'fastify'
+    #   - 'fastify-type-provider-zod'
+    #   - 'nanoid'
+    #   - 'zod'

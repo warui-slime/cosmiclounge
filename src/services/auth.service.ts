@@ -1,18 +1,18 @@
-import { TUserSignup, TUserLogin } from "@shared/src/validators/auth.validator.js";
-import { prisma } from "@shared/src/utils/prisma.js";
+import { TUserSignup, TUserLogin } from "../validators/auth.validator.js";
+import { prisma } from "../utils/prisma.js";
 import {
   AuthError,
   ConflictError,
   SignUpError,
   ValidationError,
-} from "@shared/src/errors/appError.js";
+} from "../errors/appError.js";
 import {
   AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
   InitiateAuthCommand,
   SignUpCommand,
-} from "@shared/src/utils/export.js";
-import { cognitoClient } from "@shared/src/utils/cognito.client.js";
+} from "@aws-sdk/client-cognito-identity-provider";
+import { cognitoClient } from "../utils/cognito.client.js";
 
 export class AuthService {
   async signup(userData: TUserSignup) {

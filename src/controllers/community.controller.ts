@@ -1,5 +1,5 @@
-import { FastifyRequest, FastifyReply } from '@shared/src/utils/export.js';
-import { ApiResponse } from '@shared/src/utils/apiResponse.js';
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { ApiResponse } from '../utils/apiResponse.js';
 import { 
   addMemberSchema,
   communityCreateSchema,
@@ -17,8 +17,8 @@ import {
   updateCommunityNameSchema,
   updateCommunityRulesSchema,
   updateRoleSchema
-} from '@shared/src/validators/community.validator.js';
-import { CommunityService } from './service.js';
+} from '../validators/community.validator.js';
+import { CommunityService } from '../services/community.service.js';
 
 export class CommunityController {
   private communityService: CommunityService;

@@ -1,7 +1,7 @@
-import { FastifyInstance } from "@shared/src/utils/export.js";
-import { CommunityController } from "./controller.js";
-import { verifyToken } from "@shared/src/middleware/auth.middleware.js";
-import { deleteCommunitySchema, getAllCommunitiesSchema } from "@shared/src/validators/community.validator.js";
+import { FastifyInstance } from "fastify";
+import { CommunityController } from "../controllers/community.controller.js";
+import { verifyToken } from "../middleware/auth.middleware.js";
+import { deleteCommunitySchema, getAllCommunitiesSchema } from "../validators/community.validator.js";
 
 export default async function communityRoutes(fastify: FastifyInstance) {
   const communityController = new CommunityController();

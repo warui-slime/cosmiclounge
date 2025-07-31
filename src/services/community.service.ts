@@ -1,7 +1,7 @@
-import { customAlphabet } from "@shared/src/utils/export.js";
-import { prisma } from "@shared/src/utils/prisma.js";
-import { TaddMember, TcommunityCreate, TdeleteCommunity, TexitCommunity, TgetAllCommunities, TgetCommunitybyCode, TgetCommunityById, TgetCommunityMembers, TgetUserCommunities, TmakeAdmin, TremoveMember, TupdateCommunity, TupdateCommunityBanner, TupdateCommunityDescription, TupdateCommunityName, TupdateCommunityRules, TupdateRole } from "@shared/src/validators/community.validator.js";
-import { AppError } from "@shared/src/errors/appError.js";
+import { customAlphabet } from "nanoid";
+import { prisma } from "../utils/prisma.js";
+import { TaddMember, TcommunityCreate, TdeleteCommunity, TexitCommunity, TgetAllCommunities, TgetCommunitybyCode, TgetCommunityById, TgetCommunityMembers, TgetUserCommunities, TmakeAdmin, TremoveMember, TupdateCommunity, TupdateCommunityBanner, TupdateCommunityDescription, TupdateCommunityName, TupdateCommunityRules, TupdateRole } from "../validators/community.validator.js";
+import { AppError } from "../errors/appError.js";
 
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

@@ -1,0 +1,29 @@
+package.json
+README.md
+serverless.test.yml
+serverless.yml
+tsconfig.json
+prisma/
+  schema.prisma
+src/
+  index.ts
+  controllers/
+    community.controller.ts
+  errors/
+    appError.ts
+  middleware/
+    auth.middleware.ts
+    errorHandler.ts
+  routes/
+    auth.routes.ts
+    community.routes.ts
+  services/
+    auth.service.ts
+    community.service.ts
+  utils/
+    apiResponse.ts
+    cognito.client.ts
+    prisma.ts
+  validators/
+    auth.validator.ts
+    community.validator.ts

@@ -1,6 +1,7 @@
 // src/middleware/auth.middleware.ts
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { CognitoJwtVerifier } from 'aws-jwt-verify'
+import { AuthError } from '../errors/appError.js'
 // import { prisma } from '../utils/prisma.js'
 // import type { User } from '@prisma/client'
 
@@ -39,7 +40,7 @@ export async function verifyToken(
         : null)
 
     if (!token) {
-      return reply.status(401).send({ message: 'Authentication required' })
+      throw new AuthError('Authentication token is missing')
     }
 
     // 3) Verify with Cognito
@@ -49,6 +50,6 @@ export async function verifyToken(
     request.user = payload
     return
   } catch (err) {
-    return reply.status(401).send({ message: 'Invalid or expired token' })
+    throw new AuthError('Invalid or expired token')
   }
 }
