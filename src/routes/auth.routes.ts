@@ -6,10 +6,11 @@ import {
   signupSchema,
   TUserLogin,
   TUserSignup,
+  TConfirmSignup,
   userResponseSchema,
+  confirmSchema,
 } from "../validators/auth.validator.js";
 import { AuthService } from "../services/auth.service.js";
-
 
 const authService = new AuthService();
 
@@ -24,7 +25,7 @@ async function userAuth(fastify: FastifyInstance) {
         response: {
           201: userResponseSchema,
           400: errorResponseSchema,
-          409: errorResponseSchema, 
+          409: errorResponseSchema,
           500: errorResponseSchema,
         },
       },
@@ -33,17 +34,49 @@ async function userAuth(fastify: FastifyInstance) {
       try {
         const user = await authService.signup(request.body);
 
-      
-        const responseUser = {
-          ...user,
-          createdAt: user.createdAt.toISOString(),
-        };
+        // const responseUser = {
+        //   ...user,
+        //   createdAt: user.createdAt.toISOString(),
+        // };
 
-        return reply.code(201).send(responseUser);
+        return reply
+          .code(201)
+          .send({ message: "Confirmation code sent to email." });
       } catch (error) {
-
         throw error;
       }
+    }
+  );
+  
+  
+   fastify.post<{
+    Body: TConfirmSignup;
+  }>(
+    "/confirm-signup",
+    {
+      schema: {
+        body: confirmSchema,
+        response: {
+          200: userResponseSchema,
+          400: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { email, username, confirmationCode } = req.body;
+      const dbUser = await authService.confirmSignup(
+        email,
+        username,
+        confirmationCode
+      );
+
+      return reply.code(200).send({
+        id: dbUser.id,
+        email: dbUser.email,
+        username: dbUser.username,
+        createdAt: dbUser.createdAt.toISOString(),
+      });
     }
   );
 
@@ -61,7 +94,6 @@ async function userAuth(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-
       try {
         const result = await authService.login(request.body);
 
@@ -71,14 +103,14 @@ async function userAuth(fastify: FastifyInstance) {
             secure: isProduction,
             sameSite: isProduction ? "strict" : "lax",
             maxAge: result.tokens!.ExpiresIn!,
-            path: "/"
+            path: "/",
           })
           .setCookie("refreshToken", result.tokens!.RefreshToken!, {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? "strict" : "lax",
             maxAge: 14 * 24 * 60 * 60, //14d
-            path: "/"
+            path: "/",
           })
           .code(200)
           .send({
@@ -86,14 +118,12 @@ async function userAuth(fastify: FastifyInstance) {
               ...result.user,
               createdAt: result.user.createdAt.toISOString(),
               lastLogin: result.user.lastLogin?.toISOString(),
-            }
+            },
           });
       } catch (error) {
         throw error;
       }
     }
   );
-
- 
 }
 export default userAuth;

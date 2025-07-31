@@ -49,5 +49,12 @@ export const errorResponseSchema = z.object({
     .optional(),
 });
 
+export const confirmSchema = z.object({
+  email: z.email(),
+  username: usernameValidation,
+  confirmationCode: z.string().min(6, "Confirmation code must be at least 6 characters"),
+});
+
 export type TUserSignup = z.infer<typeof signupSchema>;
 export type TUserLogin = z.infer<typeof loginSchema>;
+export type TConfirmSignup = z.infer<typeof confirmSchema>;

@@ -9,10 +9,11 @@ import {
 import {
   AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
+  ConfirmSignUpCommand,
   InitiateAuthCommand,
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { cognitoClient } from "../utils/cognito.client.js";
+import { cognitoClient, getSecretHash } from "../utils/cognito.client.js";
 
 export class AuthService {
   async signup(userData: TUserSignup) {
@@ -48,6 +49,7 @@ export class AuthService {
     // };
     const signUpCommand = new SignUpCommand({
       ClientId: process.env.COGNITO_CLIENT_ID!,
+      SecretHash: getSecretHash(userData.email),
       Username: userData.email,
       Password: userData.password,
       UserAttributes: [
@@ -55,35 +57,55 @@ export class AuthService {
         { Name: "preferred_username", Value: userData.username },
       ],
     });
+  }
 
-    const cognitoResponse = await cognitoClient.send(signUpCommand);
-    if (!cognitoResponse) {
-      throw SignUpError;
-    }
+  async confirmSignup(
+    email: string,
+    username: string,
+    confirmationCode: string
+  ) {
+      // — Confirm in Cognito —
+      await cognitoClient.send(
+        new ConfirmSignUpCommand({
+          ClientId: process.env.COGNITO_CLIENT_ID!,
+          SecretHash: getSecretHash(email),
+          Username: email,
+          ConfirmationCode: confirmationCode,
+        })
+      );
 
-    // 2. Create user in RDS
-    const dbUser = await prisma.user.create({
-      data: {
-        email: userData.email,
-        username: userData.username,
-        cognitoSub: cognitoResponse.UserSub!,
-      },
-    });
+      // — Grab the Cognito `sub` attribute —
+      const { UserAttributes } = await cognitoClient.send(
+        new AdminGetUserCommand({
+          UserPoolId: process.env.COGNITO_USER_POOL_ID!,
+          Username: email,
+        })
+      );
+      const sub = UserAttributes?.find((a) => a.Name === "sub")?.Value;
+      if (!sub) throw new Error("Missing Cognito sub");
 
-    // 3. Link RDS ID to Cognito user
-    const updateCommand = new AdminUpdateUserAttributesCommand({
-      UserPoolId: process.env.COGNITO_USER_POOL_ID,
-      Username: userData.email,
-      UserAttributes: [{ Name: "custom:rds_user_id", Value: dbUser.id }],
-    });
+      // — Create the user in your RDS in one go —
+      const dbUser = await prisma.user.create({
+        data: {
+          email,
+          username,
+          cognitoSub: sub,
+        },
+      });
 
-    await cognitoClient.send(updateCommand);
+      // — Link the RDS ID back into Cognito —
+      await cognitoClient.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: process.env.COGNITO_USER_POOL_ID!,
+          Username: email,
+          UserAttributes: [
+            { Name: "custom:rds_user_id", Value: dbUser.id },
+          ],
+        })
+      );
 
-    return {
-      username: dbUser.username,
-      email: dbUser.email,
-      createdAt: dbUser.createdAt,
-    };
+      return dbUser;
+    
   }
 
   async login(userData: TUserLogin) {
@@ -120,6 +142,7 @@ export class AuthService {
       AuthParameters: {
         USERNAME: userData.identifier,
         PASSWORD: userData.password,
+        SECRET_HASH: getSecretHash(userData.identifier),
       },
     });
 
@@ -159,7 +182,7 @@ export class AuthService {
         createdAt: user.createdAt,
         lastLogin: user.lastLogin,
       },
-      tokens: authResponse.AuthenticationResult
+      tokens: authResponse.AuthenticationResult,
     };
   }
 }
