@@ -5,3 +5,4 @@ layers/shared/nodejs/node_modules
 .env
 dist
 STRUCTURE.md
+Deploy.ps1

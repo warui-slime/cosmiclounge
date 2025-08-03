@@ -1,23 +1,12 @@
 import { z } from "zod/v4";
 
-export const usernameValidation = z
-  .string()
-  .min(2, "Username must be atleast 2 characters")
-  .max(20, "Username must be no more than 20 characters")
-  .regex(/^[a-zA-Z0-9_]+$/, "Username must not contain special characters");
+
 
 export const signupSchema = z.object({
-  username: usernameValidation,
-  email: z.email(),
-  password: z.string().min(6),
+  token: z.string()
 });
 
-export const loginSchema = z.object({
-  identifier: z.string(),
-  password: z
-    .string()
-    .min(6, { message: "password must be atleast 6 characters" }),
-});
+
 
 export const signupResponseSchema = z.object({
   message: z.string(),
@@ -54,13 +43,7 @@ export const errorResponseSchema = z.object({
     .optional(),
 });
 
-export const confirmSchema = z.object({
-  email: z.email(),
-  username: usernameValidation,
-  confirmationCode: z.string().min(6, "Confirmation code must be at least 6 characters"),
-});
+
 
 export type TUserSignup = z.infer<typeof signupSchema>;
-export type TUserLogin = z.infer<typeof loginSchema>;
 export type TSignupResponse = z.infer<typeof signupResponseSchema>;
-export type TConfirmSignup = z.infer<typeof confirmSchema>;
