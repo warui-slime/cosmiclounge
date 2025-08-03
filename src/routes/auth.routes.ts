@@ -9,6 +9,7 @@ import {
   TConfirmSignup,
   userResponseSchema,
   confirmSchema,
+  signupResponseSchema,
 } from "../validators/auth.validator.js";
 import { AuthService } from "../services/auth.service.js";
 
@@ -23,7 +24,7 @@ async function userAuth(fastify: FastifyInstance) {
       schema: {
         body: signupSchema,
         response: {
-          201: userResponseSchema,
+          201: signupResponseSchema,
           400: errorResponseSchema,
           409: errorResponseSchema,
           500: errorResponseSchema,
@@ -66,9 +67,9 @@ async function userAuth(fastify: FastifyInstance) {
     async (req, reply) => {
       const { email, username, confirmationCode } = req.body;
       const dbUser = await authService.confirmSignup(
-        email,
+       { email,
         username,
-        confirmationCode
+        confirmationCode}
       );
 
       return reply.code(200).send({

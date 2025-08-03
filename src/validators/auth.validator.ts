@@ -19,6 +19,11 @@ export const loginSchema = z.object({
     .min(6, { message: "password must be atleast 6 characters" }),
 });
 
+export const signupResponseSchema = z.object({
+  message: z.string(),
+});
+
+
 export const userResponseSchema = z.object({
   id: z.cuid().optional(),
   username: z.string(),
@@ -57,4 +62,5 @@ export const confirmSchema = z.object({
 
 export type TUserSignup = z.infer<typeof signupSchema>;
 export type TUserLogin = z.infer<typeof loginSchema>;
+export type TSignupResponse = z.infer<typeof signupResponseSchema>;
 export type TConfirmSignup = z.infer<typeof confirmSchema>;

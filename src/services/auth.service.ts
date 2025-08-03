@@ -1,4 +1,4 @@
-import { TUserSignup, TUserLogin } from "../validators/auth.validator.js";
+import { TUserSignup, TUserLogin, TConfirmSignup } from "../validators/auth.validator.js";
 import { prisma } from "../utils/prisma.js";
 import {
   AuthError,
@@ -49,28 +49,27 @@ export class AuthService {
     // };
     const signUpCommand = new SignUpCommand({
       ClientId: process.env.COGNITO_CLIENT_ID!,
-      SecretHash: getSecretHash(userData.email),
-      Username: userData.email,
+      SecretHash: getSecretHash(userData.username),
+      Username: userData.username,
       Password: userData.password,
       UserAttributes: [
         { Name: "email", Value: userData.email },
         { Name: "preferred_username", Value: userData.username },
       ],
     });
+    await cognitoClient.send(signUpCommand);
   }
 
   async confirmSignup(
-    email: string,
-    username: string,
-    confirmationCode: string
+   userData: TConfirmSignup
   ) {
       // — Confirm in Cognito —
       await cognitoClient.send(
         new ConfirmSignUpCommand({
           ClientId: process.env.COGNITO_CLIENT_ID!,
-          SecretHash: getSecretHash(email),
-          Username: email,
-          ConfirmationCode: confirmationCode,
+          SecretHash: getSecretHash(userData.username),
+          Username: userData.username,
+          ConfirmationCode: userData.confirmationCode,
         })
       );
 
@@ -78,7 +77,7 @@ export class AuthService {
       const { UserAttributes } = await cognitoClient.send(
         new AdminGetUserCommand({
           UserPoolId: process.env.COGNITO_USER_POOL_ID!,
-          Username: email,
+          Username: userData.username,
         })
       );
       const sub = UserAttributes?.find((a) => a.Name === "sub")?.Value;
@@ -87,8 +86,8 @@ export class AuthService {
       // — Create the user in your RDS in one go —
       const dbUser = await prisma.user.create({
         data: {
-          email,
-          username,
+          email: userData.email,
+          username: userData.username,
           cognitoSub: sub,
         },
       });
@@ -97,7 +96,7 @@ export class AuthService {
       await cognitoClient.send(
         new AdminUpdateUserAttributesCommand({
           UserPoolId: process.env.COGNITO_USER_POOL_ID!,
-          Username: email,
+          Username: userData.username,
           UserAttributes: [
             { Name: "custom:rds_user_id", Value: dbUser.id },
           ],
