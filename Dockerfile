@@ -1,5 +1,6 @@
 # Dockerfile for CosmicLounge Lambda API
-FROM --platform=linux/amd64 public.ecr.aws/lambda/nodejs:22
+# FROM --platform=linux/amd64 public.ecr.aws/lambda/nodejs:22
+FROM public.ecr.aws/lambda/nodejs:22
 
 # Install dependencies
 COPY package.json package-lock.json* ./

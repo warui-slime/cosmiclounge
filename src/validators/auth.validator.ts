@@ -3,7 +3,7 @@ import { z } from "zod/v4";
 
 
 export const signupSchema = z.object({
-  token: z.string()
+  username: z.string()
 });
 
 

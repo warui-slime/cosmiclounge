@@ -1,50 +1,46 @@
 import { prisma } from "../utils/prisma.js";
-import {
-  SignUpError,
-  ValidationError,
-} from "../errors/appError.js";
-import { verifyIdToken } from "../utils/verifyCognitoToken.js";
+import { SignUpError, ValidationError } from "../errors/appError.js";
+import jwt from "jsonwebtoken";
 
-export async function signup(token: string) {
-  try {
-    const decoded = await verifyIdToken(token);
-    if (!decoded) {
-      throw new ValidationError("Invalid token");
-    }
-    
-    if (typeof decoded.email !== "string") {
-      throw new ValidationError("Email missing in token");
-    }
-    
-    if (typeof decoded["cognito:username"] !== "string") {
-      throw new ValidationError("Username missing in token");
-    }
+export async function signup(token: string): Promise<void> {
+    try {
+        console.log("before token verification");
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: decoded.email },
-          { cognitoSub: decoded.sub }
-        ]
-      }
-    });
+        const publicKey = Buffer.from(
+            process.env.PUBLIC_KEY!,
+            "base64"
+        ).toString("utf-8");
+        const decoded = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
+        if (typeof decoded !== "object" || decoded === null) {
+            throw new ValidationError("Invalid token payload");
+        }
 
-    if (existingUser) {
-      throw new SignUpError("User already exists");
-    }
+        console.log("after token verification");
 
-    await prisma.user.create({
-      data: {
-        username: decoded["cognito:username"],
-        email: decoded.email,
-        cognitoSub: decoded.sub,
-      },
-    });
-  } catch (err) {
-    if (err instanceof ValidationError || err instanceof SignUpError) {
-      throw err;
+
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                OR: [{ email: decoded.email }, { cognitoSub: decoded.sub }],
+            },
+        });
+
+        if (existingUser) {
+            throw new SignUpError("User already exists");
+        }
+
+        await prisma.user.create({
+            data: {
+                username: decoded.username,
+                email: decoded.email,
+                cognitoSub: decoded.sub as string,
+            },
+        });
+    } catch (err) {
+        console.log(err);
+        
+        if (err instanceof ValidationError || err instanceof SignUpError) {
+            throw err;
+        }
+        throw new SignUpError("Failed to create user");
     }
-    throw new SignUpError("Failed to create user");
-  }
 }

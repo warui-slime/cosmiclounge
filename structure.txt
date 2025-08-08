@@ -22,7 +22,6 @@ src/
     community.service.ts
   utils/
     apiResponse.ts
-    cognito.client.ts
     prisma.ts
   validators/
     auth.validator.ts
